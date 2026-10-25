@@ -21,6 +21,7 @@ Use **Fazer backup do banco** na barra lateral ou em Configurações para baixar
 - O salário configurado é uma previsão; ao registrar uma entrada com categoria **Salário**, o valor previsto deixa de ser usado naquele mês. O salário recebido no dia 30 compõe o saldo que financia as contas do mês seguinte.
 - A aba **Fluxo mensal** reúne lançamentos, salário, contas, fatura, repasses e saldo projetado para dois meses anteriores e dois posteriores ao atual.
 - Contas mensais da casa, registro do valor pago e acompanhamento dos repasses calculados pelo percentual configurado.
+- Saldo acumulado devido pela esposa: parte das contas mensais é somada ao saldo-base e os repasses registrados são abatidos.
 - Ciclos do cartão com início, fechamento, pagamento e saldo inicial por mês.
 - Dia padrão de fechamento do cartão configurado para 28; a data pode ser corrigida diretamente na linha do ciclo.
 - Tema escuro, com preferência salva neste navegador.

@@ -55,7 +55,8 @@ def init_db():
         defaults = {
           "reserve_floor":"40", "daily_card_plan":"40", "salary":"0", "salary_day":"30",
           "household_day":"5", "card_payment_day":"5", "card_start_day":"1",
-          "card_close_day":"28", "wife_share":"34.9", "projection_months":"12"
+          "card_close_day":"28", "wife_share":"34.9", "projection_months":"12",
+          "wife_debt_initial_month":"2026-11", "wife_debt_initial_amount":"4266.35"
         }
         for k,v in defaults.items(): con.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (k,v))
 
