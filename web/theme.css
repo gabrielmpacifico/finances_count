@@ -13,3 +13,10 @@ html[data-theme="dark"] .alert{background:#402a26;border-color:#70473c;color:#ff
 @media(max-width:650px){.theme-toggle{font-size:0;padding:9px 3px;text-align:center}.theme-toggle::first-letter{font-size:15px}}
 
 html[data-theme=dark] .field label{color:var(--muted)}html[data-theme=dark] .brand-mark{background:#286e53}
+html[data-theme=dark] .apt-intro{background:linear-gradient(120deg,#22382e,#1c2521);border-color:var(--line)}
+
+html[data-theme=dark] .apt-category-fields{background:#17201c;border-color:var(--line)}html[data-theme=dark] .apt-category-badge{background:#22382e;color:#8fe0b7}html[data-theme=dark] .apt-total-row td{background:#22382e}
+
+html[data-theme=dark] .apt-category-choice{background:#17201c;border-color:var(--line)}html[data-theme=dark] .apt-category-choice:has(input:checked){background:#22382e;border-color:var(--green);color:#8fe0b7}html[data-theme=dark] .apt-month-track{background:#31413a}
+html[data-theme=dark] .apt-category-choice{background:#17201c;border-color:var(--line)}html[data-theme=dark] .apt-category-choice:has(input:checked){background:#22382e;border-color:var(--green);color:#8fe0b7}html[data-theme=dark] .apt-month-track{background:#31413a}
+html[data-theme=dark] .apt-category-choice:has(input:checked){box-shadow:0 0 0 1px #65c99f55}html[data-theme=dark] .apt-objective-track{background:#31413a}

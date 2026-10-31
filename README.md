@@ -19,7 +19,8 @@ Use **Fazer backup do banco** na barra lateral ou em Configurações para baixar
 - Lançamentos realizados e previstos: entradas, saídas da conta e compras no cartão. A categoria Salário substitui a previsão mensal quando uma entrada salarial é registrada.
 - Projeção mensal até 12 meses, salário e gasto diário padrão do cartão, com visão detalhada de dois meses anteriores e próximos dois.
 - O salário configurado é uma previsão; ao registrar uma entrada com categoria **Salário**, o valor previsto deixa de ser usado naquele mês. O salário recebido no dia 30 compõe o saldo que financia as contas do mês seguinte.
-- A aba **Fluxo mensal** reúne lançamentos, salário, contas, fatura, repasses e saldo projetado para dois meses anteriores e dois posteriores ao atual.
+- A aba **Fluxo mensal** reúne lançamentos, salário, contas, fatura, repasses e saldo projetado para dois meses anteriores e cinco posteriores ao atual.
+- A aba independente **Apartamento** registra data, fonte, objetivo, parcela, valor nominal e valor corrigido pelo INCC. Mantém totais históricos informados pela planilha, mostra pagamentos por mês e por objetivo e não altera os demais cálculos financeiros.
 - Contas mensais da casa, registro do valor pago e acompanhamento dos repasses calculados pelo percentual configurado.
 - Saldo acumulado devido pela esposa: parte das contas mensais é somada ao saldo-base e os repasses registrados são abatidos.
 - Ciclos do cartão com início, fechamento, pagamento e saldo inicial por mês.

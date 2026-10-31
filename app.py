@@ -48,7 +48,24 @@ def init_db():
           month TEXT PRIMARY KEY, start_date TEXT NOT NULL, close_date TEXT NOT NULL,
           payment_date TEXT NOT NULL, opening_balance REAL NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS apartment_entries (
+          id INTEGER PRIMARY KEY, date TEXT NOT NULL, source TEXT NOT NULL,
+          objective TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'Outros', plan TEXT NOT NULL DEFAULT '',
+          installment_number INTEGER, installment_total INTEGER, reference TEXT NOT NULL DEFAULT '',
+          balance_after REAL,
+          nominal_amount REAL NOT NULL CHECK(nominal_amount >= 0),
+          corrected_amount REAL NOT NULL CHECK(corrected_amount >= 0),
+          notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS apartment_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         """)
+        apartment_columns = {r["name"] for r in con.execute("PRAGMA table_info(apartment_entries)")}
+        for name, declaration in (("category", "TEXT NOT NULL DEFAULT 'Outros'"), ("plan", "TEXT NOT NULL DEFAULT ''"), ("reference", "TEXT NOT NULL DEFAULT ''"), ("balance_after", "REAL")):
+            if name not in apartment_columns: con.execute(f"ALTER TABLE apartment_entries ADD COLUMN {name} {declaration}")
+        if "category" not in apartment_columns:
+            con.execute("UPDATE apartment_entries SET category=CASE WHEN lower(objective) LIKE '%evolu%' THEN 'Evolução' WHEN lower(objective) LIKE '%entrada%' OR lower(objective) LIKE '%sinal%' THEN 'Entrada' WHEN lower(objective) LIKE '%taxa%' OR lower(objective) LIKE '%tarifa%' OR lower(objective) LIKE '%corret%' THEN 'Taxas' ELSE 'Outros' END")
+        con.execute("UPDATE apartment_entries SET plan='Entrada principal' WHERE category='Entrada' AND installment_total>1 AND plan=''")
+        con.execute("DELETE FROM apartment_settings WHERE key IN ('historic_paid_nominal','historic_paid_corrected','historic_fees','historic_evolution','historic_invested_amount','historic_invested_reference','entry_installments_remaining')")
         bill_columns = {r["name"] for r in con.execute("PRAGMA table_info(bills)")}
         if "replicate" not in bill_columns:
             con.execute("ALTER TABLE bills ADD COLUMN replicate INTEGER NOT NULL DEFAULT 0")
@@ -59,6 +76,11 @@ def init_db():
           "wife_debt_initial_month":"2026-11", "wife_debt_initial_amount":"4266.35"
         }
         for k,v in defaults.items(): con.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (k,v))
+        apartment_defaults = {
+          "property_value_brokerage":"333318.00", "property_value_signature":"367199.91",
+          "financed_amount":"270348.08"
+        }
+        for k,v in apartment_defaults.items(): con.execute("INSERT OR IGNORE INTO apartment_settings VALUES (?,?)", (k,v))
 
 
 def rowdicts(rows): return [dict(r) for r in rows]
@@ -73,7 +95,9 @@ def state():
         transfers = rowdicts(con.execute("SELECT * FROM transfers ORDER BY date DESC,id DESC LIMIT 200"))
         cycles = rowdicts(con.execute("SELECT * FROM card_cycles ORDER BY month DESC LIMIT 24"))
         alltx = rowdicts(con.execute("SELECT * FROM transactions"))
-    return {"today":today,"settings":settings,"transactions":tx,"bills":bills,"transfers":transfers,"cycles":cycles,"allTransactions":alltx}
+        apartment_entries = rowdicts(con.execute("SELECT * FROM apartment_entries ORDER BY date DESC,id DESC"))
+        apartment_settings = {r["key"]:r["value"] for r in con.execute("SELECT * FROM apartment_settings")}
+    return {"today":today,"settings":settings,"transactions":tx,"bills":bills,"transfers":transfers,"cycles":cycles,"allTransactions":alltx,"apartmentEntries":apartment_entries,"apartmentSettings":apartment_settings}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -104,18 +128,34 @@ class Handler(BaseHTTPRequestHandler):
                     con.execute("INSERT INTO transactions(date,description,kind,amount,status,category,installments) VALUES(?,?,?,?,?,?,?)",(data["date"],data["description"],data["kind"],float(data["amount"]),data.get("status","actual"),data.get("category",""),int(data.get("installments",1))))
                 elif path=="/api/bills":
                     con.execute("INSERT INTO bills(month,name,amount,due_day,paid,replicate) VALUES(?,?,?,?,?,?) ON CONFLICT(month,name) DO UPDATE SET amount=excluded.amount,due_day=excluded.due_day,paid=excluded.paid,replicate=excluded.replicate",(data["month"],data["name"],float(data["amount"]),int(data.get("due_day",5)),float(data.get("paid",0)),1 if data.get("replicate") else 0))
+                elif path=="/api/bills/pay":
+                    bill=con.execute("SELECT * FROM bills WHERE id=?",(int(data["id"]),)).fetchone()
+                    if not bill: return self.send(404,json.dumps({"error":"Conta não encontrada"},ensure_ascii=False))
+                    remaining=max(0.0,float(bill["amount"])-float(bill["paid"]))
+                    if remaining<=0: return self.send(400,json.dumps({"error":"Esta conta já está marcada como paga"},ensure_ascii=False))
+                    tx_date=data.get("date",date.today().isoformat())
+                    con.execute("INSERT INTO transactions(date,description,kind,amount,status,category,installments) VALUES(?,?,?,?,?,?,1)",(tx_date,f"Pagamento da conta: {bill['name']}","expense",remaining,"actual","Contas da casa"))
+                    con.execute("UPDATE bills SET paid=amount WHERE id=?",(int(data["id"]),))
                 elif path=="/api/transfers":
                     con.execute("INSERT INTO transfers(date,month,amount,description) VALUES(?,?,?,?)",(data["date"],data["month"],float(data["amount"]),data.get("description","Repasse da esposa")))
                 elif path=="/api/cycles":
                     con.execute("INSERT INTO card_cycles(month,start_date,close_date,payment_date,opening_balance) VALUES(?,?,?,?,?) ON CONFLICT(month) DO UPDATE SET start_date=excluded.start_date,close_date=excluded.close_date,payment_date=excluded.payment_date,opening_balance=excluded.opening_balance",(data["month"],data["start_date"],data["close_date"],data["payment_date"],float(data.get("opening_balance",0))))
                 elif path=="/api/settings":
                     for k,v in data.items(): con.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(k,str(v)))
+                elif path=="/api/apartment/settings":
+                    for k,v in data.items(): con.execute("INSERT INTO apartment_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(k,str(v)))
+                elif path=="/api/apartment/entries":
+                    values=(data["date"],data["source"],data["objective"],data.get("category","Outros"),data.get("plan",""),int(data["installment_number"]) if data.get("installment_number") else None,int(data["installment_total"]) if data.get("installment_total") else None,data.get("reference",""),float(data["balance_after"]) if data.get("balance_after") else None,float(data["nominal_amount"]),float(data["corrected_amount"]),data.get("notes",""))
+                    if data.get("id"):
+                        con.execute("UPDATE apartment_entries SET date=?,source=?,objective=?,category=?,plan=?,installment_number=?,installment_total=?,reference=?,balance_after=?,nominal_amount=?,corrected_amount=?,notes=? WHERE id=?",(*values,int(data["id"])))
+                    else:
+                        con.execute("INSERT INTO apartment_entries(date,source,objective,category,plan,installment_number,installment_total,reference,balance_after,nominal_amount,corrected_amount,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",values)
                 else: return self.send(404,json.dumps({"error":"Endpoint não encontrado"}))
             return self.send(200,json.dumps({"ok":True}))
         except (KeyError,ValueError,sqlite3.Error) as e: return self.send(400,json.dumps({"error":str(e)},ensure_ascii=False))
     def do_DELETE(self):
         p=urlparse(self.path).path.split("/")
-        tables={"transactions":"transactions","bills":"bills","transfers":"transfers"}
+        tables={"transactions":"transactions","bills":"bills","transfers":"transfers","apartment":"apartment_entries"}
         try:
             if len(p)==4 and p[2] in tables:
                 with db() as con: con.execute(f"DELETE FROM {tables[p[2]]} WHERE id=?",(int(p[3]),))
